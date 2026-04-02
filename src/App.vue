@@ -81,7 +81,7 @@
 
         <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
           <label>子项权重分配:</label>
-          <select v-model="category.distribution">
+          <select v-model="category.distribution" @change="prepareCustomDistribution(category)">
             <option value="equal">平均分配 (默认)</option>
             <option value="custom">自定义权重</option>
           </select>
@@ -128,6 +128,7 @@
                 v-if="category.distribution === 'custom'"
                 type="number"
                 min="0"
+                step="0.01"
                 placeholder="子项权重%"
                 v-model.number="item.weight"
                 @input="recordNumberInput(item.weight)"
@@ -332,8 +333,17 @@ function createRepeatedItem(index = 1) {
     released: false,
     earnedPoints: null,
     currentTotalPoints: null,
-    weight: null
+    weight: 0
   };
+}
+
+function initItemWeights(category) {
+  if (!Array.isArray(category.items)) return;
+  category.items.forEach(item => {
+    if (item.weight === null || item.weight === undefined) {
+      item.weight = 0;
+    }
+  });
 }
 
 function initCourseNames() {
@@ -479,6 +489,15 @@ function syncItems(category) {
   // 减少数量时，多余项被隐藏但数据保留，再增加时恢复
   while (category.items.length < target) {
     category.items.push(createRepeatedItem(category.items.length + 1))
+  }
+
+  // 保证自定义权重可输入
+  initItemWeights(category)
+}
+
+function prepareCustomDistribution(category) {
+  if (category.distribution === 'custom') {
+    initItemWeights(category)
   }
 }
 
