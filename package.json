@@ -1,0 +1,58 @@
+{
+  "name": "total-grade-calculator",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "homepage": "./",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron": "electron .",
+    "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && npm run electron\"",
+    "electron-build": "npm run build && electron-builder"
+  },
+  "dependencies": {
+    "vue": "^3.5.30"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.5",
+    "concurrently": "^8.2.2",
+    "electron": "^41.1.1",
+    "electron-builder": "^26.8.1",
+    "electron-is-dev": "^3.0.1",
+    "vite": "^8.0.1",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.gradeCalculator.app",
+    "productName": "成绩计算器",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "node_modules/**/*"
+    ],
+    "directories": {
+      "buildResources": "public",
+      "output": "release"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.education"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
