@@ -54,7 +54,7 @@
 
     <button @click="removeCategory(category.id)">Remove</button>
 
-    <div v-if="category.type === 'single'">
+    <div v-if="category.type === 'single'" class="category-details">
           <input
             class="inner-input"
             type="number"
@@ -77,9 +77,9 @@
           </p>
     </div>
 
-    <div v-if="category.type === 'repeated'">
+    <div v-if="category.type === 'repeated'" class="category-details">
 
-        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+        <div class="repeated-rule-row">
           <label>子项权重分配:</label>
           <select v-model="category.distribution" @change="prepareCustomDistribution(category)">
             <option value="equal">平均分配 (默认)</option>
@@ -97,10 +97,10 @@
         />
 
         <!-- 动态生成 (只显示前 totalItems 个，但保留所有数据) -->
-        <div v-for="(item, i) in category.items.slice(0, Number(category.totalItems) || 0)" :key="item.id" style="margin-top: 10px; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
-            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px;">
+        <div v-for="(item, i) in category.items.slice(0, Number(category.totalItems) || 0)" :key="item.id" class="repeated-item">
+            <div class="repeated-item-header">
               <span>Item {{ i + 1 }}</span>
-              <input type="text" placeholder="子项名称" v-model="item.name" style="flex:1;" />
+              <input type="text" placeholder="子项名称" v-model="item.name" class="item-name-input" />
               <label>
                 <input type="checkbox" v-model="item.released" /> 已出成绩
               </label>
@@ -509,6 +509,10 @@ function switchType(category) {
     category.released = true
     category.earnedPoints = null
     category.currentTotalPoints = null
+
+    if (!category.totalItems || Number(category.totalItems) <= 0) {
+      category.totalItems = 1
+    }
     syncItems(category)
   }
 }
@@ -992,6 +996,47 @@ select:focus {
   background: linear-gradient(135deg, #e0f2fe 0%, #ccfbf1 100%);
   box-shadow: 0 8px 24px rgba(3, 105, 161, 0.1);
   transform: translateY(-2px);
+}
+
+.category-details {
+  grid-column: 1 / -1;
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(242, 250, 255, 0.7);
+  border: 1px solid #cceeff;
+  border-radius: 10px;
+}
+
+.repeated-item {
+  margin-top: 10px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.repeated-item-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.item-name-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.repeated-rule-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+input,
+select {
+  min-width: 0;
 }
 
 input {
