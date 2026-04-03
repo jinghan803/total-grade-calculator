@@ -1905,12 +1905,38 @@ input {
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
+select {
+  width: 100%;
+  min-width: 0;
+  padding: 13px 16px;
+  border: 2px solid #e1e8ed;
+  border-radius: 12px;
+  font-size: 14px;
+  color: #1e3a8a;
+  box-sizing: border-box;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #fff0d7;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+  cursor: pointer;
+}
+
 input:hover {
   border-color: #cffafe;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02), 0 2px 8px rgba(3, 105, 161, 0.06);
 }
 
+select:hover {
+  border-color: #cffafe;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02), 0 2px 8px rgba(3, 105, 161, 0.06);
+}
+
 input:focus {
+  outline: none;
+  border-color: #0369a1;
+  box-shadow: 0 0 0 4px rgba(3, 105, 161, 0.1), inset 0 2px 4px rgba(3, 105, 161, 0.04);
+}
+
+select:focus {
   outline: none;
   border-color: #0369a1;
   box-shadow: 0 0 0 4px rgba(3, 105, 161, 0.1), inset 0 2px 4px rgba(3, 105, 161, 0.04);
