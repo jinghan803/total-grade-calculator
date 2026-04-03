@@ -3,6 +3,18 @@
     <h1>成绩计算器</h1>
     <p>可以计算成绩，更快速的判断自己是否可以拿到多少的字母成绩</p>
 
+    <div class="box instruction-box" style="background: #f9f9f9; border: 1px solid #ddd; padding: 14px; margin-bottom: 16px;">
+      <h2>使用说明</h2>
+      <ol style="padding-left: 18px; margin: 0;">
+        <li>上面“初始化课程设置”里，选学期时间、课程数量和课程名称，点“保存并进入成绩计算器”。</li>
+        <li>在“每个部分权重”里，点“Add Category”添加评估项（作业、测验、期中、期末等）。</li>
+        <li>把每个部分占整个课程分数的百分比填好，保证总和等于100%，有错误会有红字提示。</li>
+        <li>填写已出成绩的得分/总分（未出成绩可以留空）。</li>
+        <li>设置目标分数，例如想拿A就填90，系统会自动算出你最少需要未出成绩平均多少分。</li>
+        <li>如果有额外加分，选择“有 extra credit”，填好方式和分数。</li>
+      </ol>
+    </div>
+
     <div v-if="currentScene === 'setup'" class="box setup-box">
       <h2>初始化课程设置</h2>
       <label>选择周期：</label>
@@ -34,53 +46,77 @@
         <button @click="currentScene = 'setup'" style="margin-bottom:12px;">修改学年/课程设置</button>
         <h2>每个部分所占的权重</h2>
     <div v-for="(category, index) in categories" :key="category.id" class="category">
-      <select v-model="category.name">
-        <option disabled value="">选择类别名称</option>
-        <option v-for="option in nameOptions" :key="option" :value="option">{{ option }}</option>
-        <option value="custom">自定义</option>
-      </select>
-      <input v-if="category.name === 'custom'" type="text" placeholder="自定义名字" v-model="category.customName" />
-      <input type="number" placeholder="权重 (%)" v-model.number="category.weight" @input="recordNumberInput(category.weight)" list="numberHistoryList" />
-      <select v-model="category.released" style="width:100%; margin-top:6px;">
-        <option :value="true">已出成绩</option>
-        <option :value="false">未出成绩</option>
-      </select>
+      <div>
+        <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">📚 Category Name:</label>
+        <select v-model="category.name">
+          <option disabled value="">选择类别名称</option>
+          <option v-for="option in nameOptions" :key="option" :value="option">{{ option }}</option>
+          <option value="custom">自定义</option>
+        </select>
+        <input v-if="category.name === 'custom'" type="text" placeholder="自定义名字" v-model="category.customName" style="margin-top: 4px;" />
+      </div>
+
+      <div>
+        <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">⚖️ Weight (%):</label>
+        <input type="number" placeholder="e.g., 25" v-model.number="category.weight" @input="recordNumberInput(category.weight)" list="numberHistoryList" />
+        <p style="font-size: 10px; color: #999; margin-top: 2px;">这门课占总成绩的百分比</p>
+        <p style="font-size: 10px; background: #f0f9ff; padding: 6px; border-radius: 4px; color: #666; margin-top: 4px;">例：权重25% → 这门课的成绩占最终成绩的1/4</p>
+      </div>
+
+      <div>
+        <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">✅ Status:</label>
+        <select v-model="category.released">
+          <option :value="true">有成绩</option>
+          <option :value="false">没有成绩</option>
+        </select>
+      </div>
     
-    <select v-model="category.type" @change="switchType(category)">
+      <div>
+        <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">📊 Type:</label>
+        <select v-model="category.type" @change="switchType(category)">
           <option value="single">Single</option>
           <option value="repeated">Multiple (e.g. quizzes)</option>
-    </select>
+        </select>
+      </div>
 
-
-    <button @click="removeCategory(category.id)">Remove</button>
+      <button @click="removeCategory(category.id)" title="Remove this category" style="padding: 8px 12px;">✕</button>
 
     <div v-if="category.type === 'single'" class="category-details">
-          <input
-            class="inner-input"
-            type="number"
-            placeholder="得到分数"
-            v-model.number="category.earnedPoints"
-            @input="recordNumberInput(category.earnedPoints)"
-            list="numberHistoryList"
-          />
+          <div style="margin-bottom: 12px;">
+            <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">📝 Your Score:</label>
+            <input
+              class="inner-input"
+              type="number"
+              placeholder="e.g., 85"
+              v-model.number="category.earnedPoints"
+              @input="recordNumberInput(category.earnedPoints)"
+              list="numberHistoryList"
+            />
+            <p style="font-size: 10px; color: #999; margin-top: 2px;">你在这个部分拿到的实际得分</p>
+          </div>
 
-          <input
-            class="inner-input"
-            type="number"
-            placeholder="当前总分"
-            v-model.number="category.currentTotalPoints"
-            @input="recordNumberInput(category.currentTotalPoints)"
-            list="numberHistoryList"
-          />
-          <p style="font-size: 12px; color: #666; margin-top: 4px;">
-            计算: ({{ category.earnedPoints || 0 }} / {{ category.currentTotalPoints || 0 }}) × {{ category.weight || 0 }}% = {{ category.currentTotalPoints ? ((category.earnedPoints || 0) / category.currentTotalPoints * (category.weight || 0)).toFixed(2) : 0 }}%
+          <div style="margin-bottom: 12px;">
+            <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">🎯 Total Points:</label>
+            <input
+              class="inner-input"
+              type="number"
+              placeholder="e.g., 100"
+              v-model.number="category.currentTotalPoints"
+              @input="recordNumberInput(category.currentTotalPoints)"
+              list="numberHistoryList"
+            />
+            <p style="font-size: 10px; color: #999; margin-top: 2px;">这个部分的总分</p>
+          </div>
+          <p style="font-size: 12px; color: #666; margin-top: 4px; padding: 8px; background: #f0f9ff; border-radius: 6px;">
+            ✓ Your percentage: ({{ category.earnedPoints || 0 }} / {{ category.currentTotalPoints || 0 }}) × {{ category.weight || 0 }}% = {{ category.currentTotalPoints ? ((category.earnedPoints || 0) / category.currentTotalPoints * (category.weight || 0)).toFixed(2) : 0 }}%
           </p>
+          <p style="font-size: 10px; background: #fef3c7; padding: 6px; border-radius: 4px; color: #666; margin-top: 6px;">例：拿到85/100，权重25% → 对总成绩贡献 (85/100)×25% = 21.25%</p>
     </div>
 
     <div v-if="category.type === 'repeated'" class="category-details">
 
         <div class="repeated-rule-row">
-          <label>子项权重分配:</label>
+          <label style="font-size: 12px; color: #666;">📦 Distribution:</label>
           <select v-model="category.distribution" @change="prepareCustomDistribution(category)">
             <option value="equal">平均分配 (默认)</option>
             <option value="custom">自定义权重</option>
@@ -88,53 +124,72 @@
         </div>
 
         <!-- 输入 quiz 数量 -->
-        <input
-          type="number"
-          placeholder="Total number (e.g. 5 quizzes)"
-          v-model.number="category.totalItems"
-          @input="syncItems(category); recordNumberInput(category.totalItems)"
-          list="numberHistoryList"
-        />
+        <div style="margin-top: 8px; margin-bottom: 8px;">
+          <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">🔢 How many items? (e.g., 5 quizzes)</label>
+          <input
+            type="number"
+            placeholder="e.g., 5"
+            v-model.number="category.totalItems"
+            @input="syncItems(category); recordNumberInput(category.totalItems)"
+            list="numberHistoryList"
+          />
+          <p style="font-size: 10px; background: #f0f9ff; padding: 6px; border-radius: 4px; color: #666; margin-top: 4px;">例：有5个小考，就输入5。系统会自动计算这5个讨论的平均分</p>
+        </div>
 
         <!-- 动态生成 (只显示前 totalItems 个，但保留所有数据) -->
         <div v-for="(item, i) in category.items.slice(0, Number(category.totalItems) || 0)" :key="item.id" class="repeated-item">
             <div class="repeated-item-header">
-              <span>Item {{ i + 1 }}</span>
-              <input type="text" placeholder="子项名称" v-model="item.name" class="item-name-input" />
+              <span style="font-weight: bold;">Item {{ i + 1 }}</span>
+              <input type="text" placeholder="Name (optional)" v-model="item.name" class="item-name-input" />
               <label>
-                <input type="checkbox" v-model="item.released" /> 已出成绩
+                <input type="checkbox" v-model="item.released" /> ✅
               </label>
             </div>
 
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
-              <input
-                type="number"
-                placeholder="总分"
-                v-model.number="item.currentTotalPoints"
-                @input="recordNumberInput(item.currentTotalPoints)"
-                list="numberHistoryList"
-              />
+              <div>
+                <label style="font-size: 11px; color: #666;">Total:</label>
+                <input
+                  type="number"
+                  placeholder="100"
+                  v-model.number="item.currentTotalPoints"
+                  @input="recordNumberInput(item.currentTotalPoints)"
+                  list="numberHistoryList"
+                />
+                <p style="font-size: 9px; color: #999; margin-top: 2px;">满分</p>
+              </div>
 
-              <input
-                v-if="item.released"
-                type="number"
-                placeholder="得分"
-                v-model.number="item.earnedPoints"
-                @input="recordNumberInput(item.earnedPoints)"
-                list="numberHistoryList"
-              />
+              <div>
+                <label style="font-size: 11px; color: #666;">Score:</label>
+                <input
+                  v-if="item.released"
+                  type="number"
+                  placeholder="85"
+                  v-model.number="item.earnedPoints"
+                  @input="recordNumberInput(item.earnedPoints)"
+                  list="numberHistoryList"
+                />
+                <p style="font-size: 9px; color: #999; margin-top: 2px;">得数</p>
+              </div>
 
-              <input
-                v-if="category.distribution === 'custom'"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="子项权重%"
-                v-model.number="item.weight"
-                @input="recordNumberInput(item.weight)"
-                list="numberHistoryList"
-              />
+              <div>
+                <label style="font-size: 11px; color: #666;">Weight%:</label>
+                <input
+                  v-if="category.distribution === 'custom'"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="50"
+                  v-model.number="item.weight"
+                  @input="recordNumberInput(item.weight)"
+                  list="numberHistoryList"
+                />
+                <p style="font-size: 9px; color: #999; margin-top: 2px;">权重</p>
+              </div>
             </div>
+            <p v-if="item.released && item.currentTotalPoints" style="font-size: 9px; background: #f0f9ff; padding: 4px; border-radius: 3px; color: #666; margin-top: 4px; text-align: center;">
+              这个item: {{ ((item.earnedPoints || 0) / item.currentTotalPoints * 100).toFixed(1) }}%
+            </p>
         </div>
       </div>
     </div>
@@ -144,56 +199,108 @@
 
   <!-- 加入判断extracredit的功能 用户可以选择是否有extra credit 如果有则输入extra credit的分数和总分 -->
   <div v-if="Math.abs(totalWeight - 100) < 0.001" class = "box">
-    <h2>✨ Extra Credit</h2>
-    <p style="margin-bottom: 16px;">Do you have extra credit?</p>
+    <h2>✨ Extra Credit (额外加分)</h2>
+    <p style="margin-bottom: 16px; font-size: 14px; color: #555;">Do you have any extra credit? 你有额外加分吗?</p>
     <div style="display: flex; gap: 12px;">
-      <button @click="hasExtraCredit = 'yes'" style="flex: 1; background: linear-gradient(135deg, #0d9488 0%, #0d7d7d 100%);">Yes</button>
-      <button @click="hasExtraCredit = 'no'" style="flex: 1; background: linear-gradient(135deg, #0369a1 0%, #0891b2 100%);">No</button>
+      <button @click="hasExtraCredit = 'yes'" style="flex: 1; background: linear-gradient(135deg, #0d9488 0%, #0d7d7d 100%); color: white; padding: 10px; border: none; border-radius: 8px; cursor: pointer;">✓ Yes (有)</button>
+      <button @click="hasExtraCredit = 'no'" style="flex: 1; background: linear-gradient(135deg, #0369a1 0%, #0891b2 100%); color: white; padding: 10px; border: none; border-radius: 8px; cursor: pointer;">✕ No (没有)</button>
     </div>
   </div>
 
   <div v-if="hasExtraCredit === 'yes'" class = "box">
-    <h3>Enter Extra Credit Details</h3>
-    <label>应用方式：</label>
-    <select v-model="extraCreditMode" style="width:100%; margin-top:8px;">
-      <option value="global">全科额外加分</option>
-      <option value="category">指定类别额外加分</option>
-    </select>
+    <h3>📝 Extra Credit Details</h3>
+    
+    <div style="margin-bottom: 16px; padding: 10px; background: #f0f9ff; border-radius: 6px; border-left: 4px solid #0369a1;">
+      <p style="margin: 0; font-size: 13px; color: #333;">
+        💡 <strong>How it works:</strong> If you earned some extra credit points, fill in below.
+      </p>
+      <p style="margin: 6px 0 0 0; font-size: 13px; color: #666;">
+        「选择应用范围 → 选择类型 → 输入已获得和满分」
+      </p>
+    </div>
 
-    <div v-if="extraCreditMode === 'category'" style="margin-top: 8px;">
-      <label>选择类别：</label>
-      <select v-model.number="extraCreditCategoryId" style="width:100%; margin-top:8px;">
+    <div style="margin-bottom: 12px;">
+      <label style="font-size: 12px; color: #666; display: block; margin-bottom: 6px;">📍 Apply to:</label>
+      <select v-model="extraCreditMode" style="width:100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+        <option value="global">All classes (所有科目加分)</option>
+        <option value="category">One class only (单个科目加分)</option>
+      </select>
+    </div>
+
+    <div v-if="extraCreditMode === 'category'" style="margin-bottom: 12px;">
+      <label style="font-size: 12px; color: #666; display: block; margin-bottom: 6px;">🎯 Which class?</label>
+      <select v-model.number="extraCreditCategoryId" style="width:100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
         <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name || '未命名类别' }}</option>
       </select>
     </div>
 
-    <label style="margin-top: 8px; display:block;">额外分数类型：</label>
-    <select v-model="extraCreditType" style="width:100%; margin-top:8px;">
-      <option value="percent">百分比 (例如 10% 的额外加分)</option>
-      <option value="points">积分 (例如 1、2、3 分额外加分)</option>
-    </select>
+    <div style="margin-bottom: 12px;">
+      <label style="font-size: 12px; color: #666; display: block; margin-bottom: 6px;">⚙️ Credit type:</label>
+      <select v-model="extraCreditType" style="width:100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+        <option value="percent">Percentage (百分比加分, e.g., +2%)</option>
+        <option value="points">Points (积分加分, e.g., +8 points out of 10)</option>
+      </select>
+      <p style="font-size: 11px; color: #999; margin-top: 4px;">
+        <strong>百分比:</strong> 直接加到最终成绩 | <strong>积分:</strong> 加到当前分数里再算百分比
+      </p>
+    </div>
 
-    <input
-      type="number"
-      placeholder="已获额外分数"
-      v-model.number="extraCreditValue"
-      style="width:100%; margin-top: 10px;"
-      @input="recordNumberInput(extraCreditValue)"
-      list="numberHistoryList"
-    />
+    <div v-if="extraCreditType === 'percent'" style="margin-bottom: 12px;">
+      <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">➕ Extra credit (%):</label>
+      <input
+        type="number"
+        placeholder="e.g., 2"
+        v-model.number="extraCreditValue"
+        style="width:100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;"
+        @input="recordNumberInput(extraCreditValue)"
+        list="numberHistoryList"
+      />
+      <p style="font-size: 11px; color: #999; margin-top: 4px;">这个百分比会直接加到你的最终成绩上</p>
+      
+      <div style="margin-top: 10px; padding: 10px; background: #fef3c7; border-radius: 6px; border-left: 4px solid #f59e0b;">
+        <p style="margin: 0; font-size: 11px; color: #333; font-weight: bold;">📝 例子：</p>
+        <p style="margin: 6px 0 0 0; font-size: 11px; color: #555;">
+          你的当前成绩是75%，输入2 → 最终成绩 = 75% + 2% = <span style="font-weight: bold; color: #d97706;">77%</span>
+        </p>
+      </div>
+    </div>
 
-    <input
-      type="number"
-      placeholder="额外分数基准（例如 100 或 5）"
-      v-model.number="extraCreditValueMax"
-      style="width:100%; margin-top: 8px;"
-      @input="recordNumberInput(extraCreditValueMax)"
-      list="numberHistoryList"
-    />
+    <div v-if="extraCreditType === 'points'" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+      <div>
+        <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">📊 你拿到:</label>
+        <input
+          type="number"
+          placeholder="e.g., 8"
+          v-model.number="extraCreditValue"
+          style="width:100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;"
+          @input="recordNumberInput(extraCreditValue)"
+          list="numberHistoryList"
+        />
+      </div>
+
+      <div>
+        <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">📈 总分是:</label>
+        <input
+          type="number"
+          placeholder="e.g., 10"
+          v-model.number="extraCreditValueMax"
+          style="width:100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;"
+          @input="recordNumberInput(extraCreditValueMax)"
+          list="numberHistoryList"
+        />
+      </div>
+    </div>
+
+    <div v-if="extraCreditType === 'points'" style="padding: 10px; background: #fef3c7; border-radius: 6px; border-left: 4px solid #f59e0b;">
+      <p style="margin: 0; font-size: 11px; color: #333; font-weight: bold;">📝 例子：</p>
+      <p style="margin: 6px 0 0 0; font-size: 11px; color: #555;">
+        你现在是31/40，额外加分8 → 最终 = <span style="font-weight: bold; color: #d97706;">(31+8)/40 = 39/40 = 97.5%</span>
+      </p>
+    </div>
   </div>
 
   <div v-if="hasExtraCredit === 'no'" class = "box">
-    <p>No extra credit will be included in the calculation.</p>
+    <p style="color: #666;">ℹ️ No extra credit will be included in the calculation.</p>
   </div>
 
   <p>Total Weight: {{ totalWeight }}%</p>
@@ -210,24 +317,65 @@
 
   <!-- tragrt是用户想要达到的字母成绩 用户输入之后就可以计算出需要达到的分数 -->
   <div class = "box target-box">
-    <h2>目标成绩所需得分计算</h2>
-    <input type="number" placeholder="目标成绩 (%)" v-model.number="targetGrade" @input="recordNumberInput(targetGrade)" list="numberHistoryList" />
-    <div style="margin-top: 12px;">
-      <label>目标A分数门槛 (%)：</label>
-      <input type="number" style="width: 100%;" v-model.number="targetGradeA" @input="recordNumberInput(targetGradeA)" list="numberHistoryList" />
-      <p style="font-size: 14px; color: #444; margin-top: 4px;"> 当前已课成绩：{{ confirmedGrade.toFixed(2) }}%，未出成绩最多可补充：{{ unreleasedPotential.toFixed(2) }}%。</p>
-      <p style="font-size: 14px; color: #444; margin-top: 2px;">要达到 A（{{ targetGradeA.toFixed(2) }}%），未出成绩平均需达到：
-        <span v-if="neededAverageUnreleased === null">N/A</span>
-        <span v-else-if="neededAverageUnreleased === Infinity">无解（需要 >100%）</span>
-        <span v-else>{{ neededAverageUnreleased.toFixed(2) }}%</span>
+    <h2>🎯 Target Grade Calculation (目标成绩计算)</h2>
+    
+    <div style="margin-bottom: 16px;">
+      <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">📌 Target grade (%):</label>
+      <input type="number" placeholder="e.g., 85" v-model.number="targetGrade" @input="recordNumberInput(targetGrade)" list="numberHistoryList" style="padding: 8px; border-radius: 6px; border: 1px solid #ccc; width: 100%;" />
+      <p style="font-size: 10px; background: #f0f9ff; padding: 6px; border-radius: 4px; color: #666; margin-top: 4px;">例：输入85表示想要达到85%的成绩</p>
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">🅰️ Target A grade (%):</label>
+      <input type="number" placeholder="e.g., 90" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;" v-model.number="targetGradeA" @input="recordNumberInput(targetGradeA)" list="numberHistoryList" />
+      <p style="font-size: 10px; background: #f0f9ff; padding: 6px; border-radius: 4px; color: #666; margin-top: 4px;">例：A通常是90-100，输入你目标成绩的下限</p>
+      <p style="font-size: 13px; color: #444; margin-top: 8px; padding: 8px; background: #f0f9ff; border-radius: 6px;">
+        ✓ Current confirmed grade: {{ confirmedGrade.toFixed(2) }}% | Unreleased potential: +{{ unreleasedPotential.toFixed(2) }}%
+      </p>
+      <p style="font-size: 13px; color: #444; margin-top: 6px; padding: 8px; background: #fef3c7; border-radius: 6px;">
+        📊 To reach A ({{ targetGradeA.toFixed(2) }}%), unreleased must average:
+        <span v-if="neededAverageUnreleased === null" style="font-weight: bold; color: #d97706;"> N/A</span>
+        <span v-else-if="neededAverageUnreleased === Infinity" style="font-weight: bold; color: #dc2626;"> Impossible (need >100%)</span>
+        <span v-else style="font-weight: bold; color: #0d7d7d;"> {{ neededAverageUnreleased.toFixed(2) }}%</span>
       </p>
     </div>
-    <p class="highlight-text">当前已确认成绩（不含额外加分）：{{ confirmedGrade.toFixed(2) }}%</p>
-    <p class="highlight-text">当前已确认成绩（含额外加分）：{{ confirmedGradeWithExtra.toFixed(2) }}%</p>
-    <p class="highlight-text">最优可达成绩（不含额外加分）：{{ bestPossibleGrade.toFixed(2) }}%</p>
-    <p class="highlight-text">最优可达成绩（含额外加分）：{{ bestPossibleGradeWithExtra.toFixed(2) }}%</p>
-    <p v-if="(targetGrade !== null && bestPossibleGradeWithExtra < targetGrade) || (targetGradeA !== null && bestPossibleGradeWithExtra < targetGradeA)" style="color: red;">
-      没有办法达成了，没关系的 尽力就好！！ 要不要更换一个目标成绩看看？
+
+    <div style="margin-top: 18px; padding: 12px; background: linear-gradient(135deg, rgba(13, 148, 136, 0.08) 0%, rgba(13, 125, 125, 0.08) 100%); border-radius: 8px;">
+      <p style="font-size: 12px; color: #333; font-weight: bold; margin-bottom: 10px;">📊 成绩详解：</p>
+      <div style="margin-bottom: 12px; padding: 10px; background: #eff6ff; border-radius: 6px; border-left: 4px solid #2563eb;">
+        <p style="margin: 0; font-size: 11px; color: #1e3a8a; font-weight: bold;">先看这三个概念：</p>
+        <p style="margin: 6px 0 0 0; font-size: 10px; color: #475569;">1. 当前已确认成绩 = 现在已经出分的部分，按权重算出来你已经稳拿到的成绩。</p>
+        <p style="margin: 4px 0 0 0; font-size: 10px; color: #475569;">2. 未出成绩最多可补充 = 还没出分的部分，如果后面全部拿满分，最多还能再增加多少个百分点。</p>
+        <p style="margin: 4px 0 0 0; font-size: 10px; color: #475569;">3. 最优可达成绩 = 当前已确认成绩 + 未出成绩最多可补充，也就是你理论上最高能到的分数。</p>
+      </div>
+      
+      <div style="margin-bottom: 10px; padding: 10px; background: white; border-radius: 6px; border-left: 4px solid #0d9488;">
+        <p style="margin: 0; font-size: 12px; font-weight: bold; color: #0d9488;">📍 当前已确认成绩 (不含额外加分): {{ confirmedGrade.toFixed(2) }}%</p>
+        <p style="margin: 6px 0 0 0; font-size: 11px; color: #666;">= 只看“已经出成绩”的部分，按权重算出来你现在已经确定拿到的成绩</p>
+        <p style="margin: 4px 0 0 0; font-size: 10px; color: #999;">例：midterm 已出、homework 已出、lab 只算已完成那部分；其他还没出的部分先不算进来。</p>
+      </div>
+
+      <div style="margin-bottom: 10px; padding: 10px; background: white; border-radius: 6px; border-left: 4px solid #0d9488;">
+        <p style="margin: 0; font-size: 12px; font-weight: bold; color: #0d9488;">⭐ 当前已确认成绩 (含额外加分): {{ confirmedGradeWithExtra.toFixed(2) }}%</p>
+        <p style="margin: 6px 0 0 0; font-size: 11px; color: #666;">= 当前已确认成绩 + 你已经填入的 extra credit</p>
+        <p style="margin: 4px 0 0 0; font-size: 10px; color: #999;">例：如果有2%的额外加分，84.60% + 2% = 86.60%</p>
+      </div>
+
+      <div style="margin-bottom: 10px; padding: 10px; background: white; border-radius: 6px; border-left: 4px solid #f59e0b;">
+        <p style="margin: 0; font-size: 12px; font-weight: bold; color: #f59e0b;">📈 最优可达成绩 (不含额外加分): {{ bestPossibleGrade.toFixed(2) }}%</p>
+        <p style="margin: 6px 0 0 0; font-size: 11px; color: #666;">= 假设现在还没出的那些部分，后面你全部拿满分时，最终最高可以到多少</p>
+        <p style="margin: 4px 0 0 0; font-size: 10px; color: #999;">例：当前已确认是 84.60%，而未出部分最多还能补 10%，那最优可达成绩就是 94.60%。</p>
+      </div>
+
+      <div style="padding: 10px; background: white; border-radius: 6px; border-left: 4px solid #059669;">
+        <p style="margin: 0; font-size: 12px; font-weight: bold; color: #059669;">🏆 最优可达成绩 (含额外加分): {{ bestPossibleGradeWithExtra.toFixed(2) }}%</p>
+        <p style="margin: 6px 0 0 0; font-size: 11px; color: #666;">= 最优可达成绩 + extra credit，也就是把“未出全满分”和“额外加分”都一起算进去的最好情况</p>
+        <p style="margin: 4px 0 0 0; font-size: 10px; color: #999;">例：如果最优可达是 94.60%，再加 2% extra，那最好情况就是 96.60%。</p>
+      </div>
+    </div>
+
+    <p v-if="(targetGrade !== null && bestPossibleGradeWithExtra < targetGrade) || (targetGradeA !== null && bestPossibleGradeWithExtra < targetGradeA)" style="color: #dc2626; margin-top: 12px; padding: 10px; background: #fee2e2; border-radius: 6px; border-left: 4px solid #dc2626;">
+      ⚠️ Goal cannot be reached with current situation. 加油! 😊
     </p>
 
   </div> <!-- target-box -->
@@ -241,7 +389,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 
 // 学年和课程设置
 const yearOptions = ['2023-2024', '2024-2025', '2025-2026', '2026-2027'];
@@ -295,7 +443,7 @@ function addCategory() {
     id: Date.now(),
     name: '',
     customName: '',
-    weight: 0,
+    weight: null,
     type: 'single',
     distribution: 'equal',
     earnedPoints: null,
@@ -460,6 +608,25 @@ onMounted(() => {
   if (currentScene.value === 'setup') {
     initCourseNames();
   }
+
+  const applyHintsToInputs = () => {
+    document.querySelectorAll('input, select').forEach((el) => {
+      const placeholder = el.getAttribute('placeholder');
+      const title = el.getAttribute('title');
+      const hint = placeholder || el.getAttribute('aria-label') || '请填写内容';
+      if (!title) {
+        el.setAttribute('title', hint);
+      }
+      if (!el.getAttribute('aria-label')) {
+        el.setAttribute('aria-label', hint);
+      }
+    });
+  };
+
+  applyHintsToInputs();
+  const observer = new MutationObserver(applyHintsToInputs);
+  observer.observe(document.body, { childList: true, subtree: true });
+
   // 自动清理过期存储
   const stored = localStorage.getItem(configStorageKey);
   if (stored) {
@@ -473,6 +640,10 @@ onMounted(() => {
       localStorage.removeItem(configStorageKey);
     }
   }
+
+  onUnmounted(() => {
+    observer.disconnect();
+  });
 });
 
 watch([selectedYear, semesterStartDate, semesterEndDate, courseCount, courseNames, categories, hasExtraCredit, extraCreditMode, extraCreditType, extraCreditCategoryId, extraCreditValue, extraCreditValueMax, targetGrade, targetGradeA], saveConfig, { deep: true });
@@ -536,24 +707,37 @@ const remainingWeight = computed(() => {
 const extraCreditContribution = computed(() => {
   if (hasExtraCredit.value !== 'yes') return 0
 
-  const base = normalizeNumber(extraCreditValue.value)
-  const max = normalizeNumber(extraCreditValueMax.value)
-  if (max <= 0) return 0
-
-  const rate = Math.min(1, Math.max(0, base / max))
-
-  if (extraCreditMode.value === 'global') {
-    return extraCreditType.value === 'percent'
-      ? rate * 100
-      : rate * 100
+  // 百分比模式：You earned 就是百分比本身
+  if (extraCreditType.value === 'percent') {
+    const percentValue = normalizeNumber(extraCreditValue.value)
+    
+    if (extraCreditMode.value === 'global') {
+      return percentValue  // 直接加到全部成绩
+    }
+    
+    // 如果是 category 模式，加到指定 category 的权重内
+    const category = categories.value.find(c => c.id === extraCreditCategoryId.value)
+    if (!category || !category.weight) return 0
+    const catWeight = normalizeNumber(category.weight)
+    return (percentValue / 100) * catWeight
   }
 
-  // category 模式：将额外贡献归入一个特定 category 权重之内
+  // 积分模式：You earned / Out of 计算比例
+  const earned = normalizeNumber(extraCreditValue.value)
+  const total = normalizeNumber(extraCreditValueMax.value)
+  if (total <= 0) return 0
+
+  const pointRate = earned / total  // 比如 8/10 = 0.8
+
+  if (extraCreditMode.value === 'global') {
+    return pointRate * 100  // 转换成百分比加分（80%）
+  }
+
+  // category 模式：将这个比例加到指定 category 的权重内
   const category = categories.value.find(c => c.id === extraCreditCategoryId.value)
   if (!category || !category.weight) return 0
-
   const catWeight = normalizeNumber(category.weight)
-  return rate * catWeight
+  return pointRate * catWeight
 })
 
 const confirmedGradeWithExtra = computed(() => {
@@ -979,10 +1163,10 @@ select:focus {
 
 .category {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  grid-template-columns: 2fr 1.2fr 1fr 1.2fr auto;
   gap: 14px;
   margin-bottom: 18px;
-  align-items: center;
+  align-items: flex-start;
   background: linear-gradient(135deg, #f0f9ff 0%, #ecfdf5 100%);
   padding: 18px;
   border-radius: 14px;
@@ -991,18 +1175,53 @@ select:focus {
   box-shadow: 0 4px 12px rgba(3, 105, 161, 0.05);
 }
 
-.category:hover {
-  border-color: #0369a1;
-  background: linear-gradient(135deg, #e0f2fe 0%, #ccfbf1 100%);
-  box-shadow: 0 8px 24px rgba(3, 105, 161, 0.1);
-  transform: translateY(-2px);
+.input-hint {
+  font-size: 12px;
+  color: #666;
+  margin-top: 2px;
+  margin-bottom: 8px;
 }
 
-.category-details {
-  grid-column: 1 / -1;
-  margin-top: 12px;
-  padding: 12px;
-  background: rgba(242, 250, 255, 0.7);
+@media (max-width: 900px) {
+  .container {
+    margin: 20px auto;
+    padding: 12px;
+  }
+
+  .box {
+    padding: 16px;
+  }
+
+  .category {
+    grid-template-columns: 1fr;
+  }
+
+  .category > * {
+    width: 100%;
+  }
+
+  .repeated-item {
+    padding: 10px;
+  }
+
+  input, select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 500px) {
+  h1 {
+    font-size: 1.9rem;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+  }
+
+  .target-box {
+    padding: 18px;
+  }
   border: 1px solid #cceeff;
   border-radius: 10px;
 }
