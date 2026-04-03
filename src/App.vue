@@ -1222,8 +1222,6 @@ select:focus {
   .target-box {
     padding: 18px;
   }
-  border: 1px solid #cceeff;
-  border-radius: 10px;
 }
 
 .repeated-item {
