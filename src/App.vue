@@ -1898,9 +1898,10 @@ input {
   border: 2px solid #e1e8ed;
   border-radius: 12px;
   font-size: 14px;
+  color: #1e3a8a;
   box-sizing: border-box;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: #fff;
+  background: #bab5b5;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
