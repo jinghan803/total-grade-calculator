@@ -1901,7 +1901,7 @@ input {
   color: #1e3a8a;
   box-sizing: border-box;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: #ffd7d7;
+  background: #fff0d7;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
