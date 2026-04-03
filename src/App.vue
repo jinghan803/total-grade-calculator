@@ -1,5 +1,12 @@
 <template>
   <div class="container">
+    <div class="save-status-badge" :class="`save-status-${saveStatus}`">
+      <span v-if="saveStatus === 'saving'">保存中…</span>
+      <span v-else-if="saveStatus === 'saved'">已保存</span>
+      <span v-else>保存失败</span>
+      <small v-if="lastSavedAt">{{ lastSavedAt }}</small>
+    </div>
+
     <h1>成绩计算器</h1>
     <p>可以计算成绩，更快速的判断自己是否可以拿到多少的字母成绩</p>
 
@@ -42,6 +49,18 @@
     </div>
 
     <div v-if="currentScene === 'calculator'">
+      <div class="box">
+        <h2>📅 学期进度条</h2>
+        <p v-if="semesterProgressPercent === null" style="font-size: 13px; color: #666;">请先在“初始化课程设置”填写学期开始和结束日期。</p>
+        <template v-else>
+          <div style="height: 14px; background: #e5e7eb; border-radius: 999px; overflow: hidden;">
+            <div :style="{ width: `${semesterProgressPercent.toFixed(1)}%`, height: '100%', background: 'linear-gradient(90deg, #0284c7, #14b8a6)' }"></div>
+          </div>
+          <p style="margin-top: 8px; font-size: 13px; color: #374151;">学期进度：{{ semesterProgressPercent.toFixed(1) }}% ｜当前已确认成绩：{{ confirmedGradeWithExtra.toFixed(2) }}%</p>
+          <p style="margin-top: 4px; font-size: 12px; color: #6b7280;">{{ semesterProgressHint }}</p>
+        </template>
+      </div>
+
       <div class = "box">
         <button @click="currentScene = 'setup'" style="margin-bottom:12px;">修改学年/课程设置</button>
         <h2>每个部分所占的权重</h2>
@@ -315,6 +334,52 @@
     Total weight is perfect! You can proceed.
   </p>
 
+  <div class="box">
+    <h2>🩺 权重健康检查</h2>
+    <p v-if="healthCheckIssues.length === 0" style="color: #166534; font-size: 13px;">✅ 当前没有发现明显配置问题。</p>
+    <ul v-else style="margin: 0; padding-left: 18px; color: #991b1b; font-size: 13px;">
+      <li v-for="(issue, idx) in healthCheckIssues" :key="`issue-${idx}`" style="margin-bottom: 6px;">{{ issue }}</li>
+    </ul>
+  </div>
+
+  <div class="box">
+    <h2>📊 部分优先级建议</h2>
+    <p style="font-size: 12px; color: #6b7280; margin-bottom: 8px;">按“每提高 1 分（1%）对总评带来的提升”排序，越靠前越值得优先投入。</p>
+    <p v-if="prioritySuggestions.length === 0" style="color: #6b7280; font-size: 13px;">暂无未出成绩的课程可排序。</p>
+    <ol v-else style="margin: 0; padding-left: 20px; font-size: 13px; color: #374151;">
+      <li v-for="item in prioritySuggestions" :key="item.id" style="margin-bottom: 6px;">
+        {{ item.name }}：每提升 1% 约带来 +{{ item.gainPerOnePercent.toFixed(2) }}% 总评（权重 {{ item.weight.toFixed(2) }}%）
+      </li>
+    </ol>
+  </div>
+
+  <div class="box">
+    <h2>🎚️ 各个部分模拟器</h2>
+    <p style="font-size: 12px; color: #6b7280; margin-bottom: 8px;">可单独模拟每个部分：single 直接模拟；repeated 可模拟整体或某一个小 quiz。</p>
+
+    <div v-if="whatIfTargetOptions.length > 0">
+      <label style="font-size: 12px; color: #4b5563; display: block; margin-bottom: 6px;">选择要模拟的部分：</label>
+      <select v-model="whatIfTargetKey" style="width: 100%; margin-bottom: 8px;">
+        <option v-for="option in whatIfTargetOptions" :key="option.key" :value="option.key">{{ option.name }}</option>
+      </select>
+
+      <label style="font-size: 12px; color: #4b5563; display: block; margin-bottom: 6px;">假设该部分得分率：{{ whatIfScore.toFixed(0) }}%</label>
+      <input type="range" min="0" max="100" step="1" v-model.number="whatIfScore" style="width: 100%;" />
+      <div style="display: flex; gap: 8px; margin-top: 8px;">
+        <button @click="setWhatIfScore(85)" style="flex: 1;">85%</button>
+        <button @click="setWhatIfScore(90)" style="flex: 1;">90%</button>
+        <button @click="setWhatIfScore(95)" style="flex: 1;">95%</button>
+      </div>
+      <button @click="applyWhatIfScoreToInputs" style="width: 100%; margin-top: 8px; background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);">
+        自动填入这个部分
+      </button>
+      <p style="margin-top: 10px; font-size: 13px; color: #0f766e;">模拟后总评（含额外加分）：{{ whatIfProjectedGrade.toFixed(2) }}%</p>
+      <p style="margin-top: 4px; font-size: 12px; color: #6b7280;">相较当前：{{ whatIfDelta >= 0 ? '+' : '' }}{{ whatIfDelta.toFixed(2) }}%</p>
+      <p v-if="whatIfApplyNotice" style="margin-top: 6px; font-size: 12px; color: #0f766e;">{{ whatIfApplyNotice }}</p>
+    </div>
+    <p v-else style="font-size: 13px; color: #6b7280;">暂无可模拟的部分，请先添加并设置部分。</p>
+  </div>
+
   <!-- tragrt是用户想要达到的字母成绩 用户输入之后就可以计算出需要达到的分数 -->
   <div class = "box target-box">
     <h2>🎯 Target Grade Calculation (目标成绩计算)</h2>
@@ -330,12 +395,12 @@
       <input type="number" placeholder="e.g., 90" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;" v-model.number="targetGradeA" @input="recordNumberInput(targetGradeA)" list="numberHistoryList" />
       <p style="font-size: 10px; background: #f0f9ff; padding: 6px; border-radius: 4px; color: #666; margin-top: 4px;">例：A通常是90-100，输入你目标成绩的下限</p>
       <p style="font-size: 13px; color: #444; margin-top: 8px; padding: 8px; background: #f0f9ff; border-radius: 6px;">
-        ✓ Current confirmed grade: {{ confirmedGrade.toFixed(2) }}% | Unreleased potential: +{{ unreleasedPotential.toFixed(2) }}%
+        ✓ 当前已确认成绩：{{ confirmedGrade.toFixed(2) }}% ｜未出成绩最多可补充：+{{ unreleasedPotential.toFixed(2) }}%
       </p>
       <p style="font-size: 13px; color: #444; margin-top: 6px; padding: 8px; background: #fef3c7; border-radius: 6px;">
-        📊 To reach A ({{ targetGradeA.toFixed(2) }}%), unreleased must average:
+        📊 要达到 A（{{ targetGradeA.toFixed(2) }}%），未出成绩平均需要：
         <span v-if="neededAverageUnreleased === null" style="font-weight: bold; color: #d97706;"> N/A</span>
-        <span v-else-if="neededAverageUnreleased === Infinity" style="font-weight: bold; color: #dc2626;"> Impossible (need >100%)</span>
+        <span v-else-if="neededAverageUnreleased === Infinity" style="font-weight: bold; color: #dc2626;"> 无法达到（需要 &gt;100%）</span>
         <span v-else style="font-weight: bold; color: #0d7d7d;"> {{ neededAverageUnreleased.toFixed(2) }}%</span>
       </p>
     </div>
@@ -371,6 +436,42 @@
         <p style="margin: 0; font-size: 12px; font-weight: bold; color: #059669;">🏆 最优可达成绩 (含额外加分): {{ bestPossibleGradeWithExtra.toFixed(2) }}%</p>
         <p style="margin: 6px 0 0 0; font-size: 11px; color: #666;">= 最优可达成绩 + extra credit，也就是把“未出全满分”和“额外加分”都一起算进去的最好情况</p>
         <p style="margin: 4px 0 0 0; font-size: 10px; color: #999;">例：如果最优可达是 94.60%，再加 2% extra，那最好情况就是 96.60%。</p>
+      </div>
+
+      <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 6px; border-left: 4px solid #7c3aed;">
+        <p style="margin: 0; font-size: 12px; font-weight: bold; color: #6d28d9;">🎓 成绩等级映射</p>
+        <div style="margin-top: 8px; padding: 8px; background: #f8f5ff; border-radius: 6px;">
+          <label style="font-size: 11px; color: #5b21b6; display: block; margin-bottom: 6px;">学校预设等级标准：</label>
+          <select v-model="gradeScalePreset" style="width: 100%; min-height: 36px; padding: 6px 10px; border-radius: 8px; border: 1px solid #c4b5fd;">
+            <option value="us-standard">US Standard（A 93+ / A- 90+）</option>
+            <option value="china-90">90制（A 90+ / B 80+ / C 70+）</option>
+            <option value="gpa-4">4.0 GPA 映射（百分制近似）</option>
+            <option value="custom">自定义</option>
+          </select>
+          <div v-if="gradeScalePreset === 'custom'" style="margin-top: 8px;">
+            <label style="font-size: 11px; color: #5b21b6; display: block; margin-bottom: 4px;">请输入 A- 起始分数：</label>
+            <input
+              type="number"
+              min="60"
+              max="99"
+              step="0.1"
+              placeholder="例如 89.5"
+              v-model.number="customAMinusThreshold"
+              @input="recordNumberInput(customAMinusThreshold)"
+              list="numberHistoryList"
+              style="width: 100%; min-height: 36px; padding: 6px 10px; border-radius: 8px; border: 1px solid #c4b5fd;"
+            />
+          </div>
+        </div>
+        <p style="margin: 6px 0 0 0; font-size: 11px; color: #666;">当前成绩等级（含额外加分）：<strong>{{ gradeLabel(confirmedGradeWithExtra) }}</strong></p>
+        <p style="margin: 4px 0 0 0; font-size: 11px; color: #666;">最优可达等级（含额外加分）：<strong>{{ gradeLabel(bestPossibleGradeWithExtra) }}</strong></p>
+        <p style="margin: 6px 0 0 0; font-size: 10px; color: #999;">映射标准：{{ gradeScaleText }}</p>
+      </div>
+
+      <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 6px; border-left: 4px solid #ea580c;">
+        <p style="margin: 0; font-size: 12px; font-weight: bold; color: #c2410c;">🧭 结果解释模式</p>
+        <p style="margin: 6px 0 0 0; font-size: 11px; color: #666;">{{ resultExplanation }}</p>
+        <p style="margin: 6px 0 0 0; font-size: 11px; color: #666;">{{ suggestedPlan }}</p>
       </div>
     </div>
 
@@ -432,7 +533,15 @@ const extraCreditValue = ref(0);
 const extraCreditValueMax = ref(100);
 const targetGrade = ref(null);
 const targetGradeA = ref(90);
+const gradeScalePreset = ref('us-standard'); // us-standard | china-90 | gpa-4 | custom
+const customAMinusThreshold = ref(90);
+const whatIfScore = ref(90);
+const whatIfTargetKey = ref('');
+const whatIfApplyNotice = ref('');
 const numberHistory = ref(new Set()); // 存储历史输入的数字
+const saveStatus = ref('saved'); // saving | saved | error
+const lastSavedAt = ref('');
+let saveStatusTimer = null;
 
 const totalWeight = computed(() => {
   return categories.value.reduce((sum, category) => sum + (category.weight || 0), 0);
@@ -549,11 +658,46 @@ function saveConfig() {
     extraCreditValueMax: extraCreditValueMax.value,
     targetGrade: targetGrade.value,
     targetGradeA: targetGradeA.value,
+    gradeScalePreset: gradeScalePreset.value,
+    customAMinusThreshold: customAMinusThreshold.value,
     numberHistory: Array.from(numberHistory.value),
     savedAt: new Date().toISOString()
   };
 
-  localStorage.setItem(configStorageKey, JSON.stringify(config));
+  try {
+    localStorage.setItem(configStorageKey, JSON.stringify(config));
+    saveStatus.value = 'saved';
+    lastSavedAt.value = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+  } catch {
+    saveStatus.value = 'error';
+  }
+}
+
+function triggerAutoSave() {
+  saveStatus.value = 'saving';
+
+  if (saveStatusTimer) {
+    clearTimeout(saveStatusTimer);
+  }
+
+  saveStatusTimer = setTimeout(() => {
+    saveConfig();
+    saveStatusTimer = null;
+  }, 220);
+}
+
+function flushSaveNow() {
+  if (saveStatusTimer) {
+    clearTimeout(saveStatusTimer);
+    saveStatusTimer = null;
+  }
+  saveConfig();
+}
+
+function handlePageHiddenSave() {
+  if (document.visibilityState === 'hidden') {
+    flushSaveNow();
+  }
 }
 
 function isStaleSemester(config) {
@@ -597,6 +741,11 @@ function loadConfig() {
     if (typeof config.extraCreditValueMax === 'number') extraCreditValueMax.value = config.extraCreditValueMax;
     if (typeof config.targetGrade === 'number') targetGrade.value = config.targetGrade;
     if (typeof config.targetGradeA === 'number') targetGradeA.value = config.targetGradeA;
+    if (typeof config.gradeScalePreset === 'string') gradeScalePreset.value = config.gradeScalePreset;
+    if (!config.gradeScalePreset && typeof config.aMinusStandardMode === 'string') {
+      gradeScalePreset.value = config.aMinusStandardMode === 'custom' ? 'custom' : 'us-standard';
+    }
+    if (typeof config.customAMinusThreshold === 'number') customAMinusThreshold.value = config.customAMinusThreshold;
     if (Array.isArray(config.numberHistory)) numberHistory.value = new Set(config.numberHistory);
   } catch {
     localStorage.removeItem(configStorageKey);
@@ -605,6 +754,7 @@ function loadConfig() {
 
 onMounted(() => {
   loadConfig();
+  lastSavedAt.value = new Date().toLocaleTimeString('zh-CN', { hour12: false });
   if (currentScene.value === 'setup') {
     initCourseNames();
   }
@@ -627,6 +777,10 @@ onMounted(() => {
   const observer = new MutationObserver(applyHintsToInputs);
   observer.observe(document.body, { childList: true, subtree: true });
 
+  window.addEventListener('beforeunload', flushSaveNow);
+  window.addEventListener('pagehide', flushSaveNow);
+  document.addEventListener('visibilitychange', handlePageHiddenSave);
+
   // 自动清理过期存储
   const stored = localStorage.getItem(configStorageKey);
   if (stored) {
@@ -642,11 +796,17 @@ onMounted(() => {
   }
 
   onUnmounted(() => {
+    if (saveStatusTimer) {
+      clearTimeout(saveStatusTimer);
+    }
+    window.removeEventListener('beforeunload', flushSaveNow);
+    window.removeEventListener('pagehide', flushSaveNow);
+    document.removeEventListener('visibilitychange', handlePageHiddenSave);
     observer.disconnect();
   });
 });
 
-watch([selectedYear, semesterStartDate, semesterEndDate, courseCount, courseNames, categories, hasExtraCredit, extraCreditMode, extraCreditType, extraCreditCategoryId, extraCreditValue, extraCreditValueMax, targetGrade, targetGradeA], saveConfig, { deep: true });
+watch([selectedYear, semesterStartDate, semesterEndDate, courseCount, courseNames, categories, hasExtraCredit, extraCreditMode, extraCreditType, extraCreditCategoryId, extraCreditValue, extraCreditValueMax, targetGrade, targetGradeA, gradeScalePreset, customAMinusThreshold], triggerAutoSave, { deep: true });
 
 function syncItems(category) {
   let target = Number(category.totalItems) || 0
@@ -687,6 +847,49 @@ function switchType(category) {
     syncItems(category)
   }
 }
+
+function displayCategoryName(category, index = 0) {
+  if (!category) return `分类${index + 1}`
+  if (category.name === 'custom') {
+    return category.customName?.trim() || `分类${index + 1}`
+  }
+  return category.name || `分类${index + 1}`
+}
+
+function hasUnreleasedWork(category) {
+  if (!category) return false
+  if (category.type === 'single') return !category.released
+  if (category.type === 'repeated') {
+    return Array.isArray(category.items) && category.items.some(item => !item.released)
+  }
+  return false
+}
+
+const semesterProgressPercent = computed(() => {
+  if (!semesterStartDate.value || !semesterEndDate.value) return null
+
+  const start = new Date(semesterStartDate.value)
+  const end = new Date(semesterEndDate.value)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return null
+
+  const now = new Date()
+  if (now <= start) return 0
+  if (now >= end) return 100
+
+  return ((now - start) / (end - start)) * 100
+})
+
+const semesterProgressHint = computed(() => {
+  if (semesterProgressPercent.value === null) return '请设置学期日期后查看进度。'
+
+  const progress = semesterProgressPercent.value
+  const current = confirmedGradeWithExtra.value
+  if (current >= progress) {
+    return `当前成绩（${current.toFixed(2)}%）不低于学期进度（${progress.toFixed(1)}%），节奏良好。`
+  }
+
+  return `当前成绩（${current.toFixed(2)}%）低于学期进度（${progress.toFixed(1)}%），建议优先补高权重未出项目。`
+})
 
 const confirmedGrade = computed(()=> {
   return categories.value.reduce((sum, category) => {
@@ -762,6 +965,288 @@ const neededAverageOnRemaining = computed(() => {
   return (needed / remaining) * 100
 })
 
+function setWhatIfScore(score) {
+  whatIfScore.value = Math.max(0, Math.min(100, Number(score) || 0))
+}
+
+function getVisibleItems(category) {
+  if (!Array.isArray(category.items)) return []
+  const totalItems = Math.max(0, Math.floor(Number(category.totalItems) || 0))
+  if (totalItems > 0) return category.items.slice(0, totalItems)
+  return category.items
+}
+
+const whatIfTargetOptions = computed(() => {
+  const options = []
+
+  categories.value.forEach((category, index) => {
+    const weight = normalizeNumber(category.weight)
+    if (weight <= 0) return
+
+    const categoryName = displayCategoryName(category, index)
+
+    if (category.type === 'single') {
+      options.push({
+        key: `single:${category.id}`,
+        kind: 'single',
+        categoryId: category.id,
+        name: `${categoryName}（single）`
+      })
+      return
+    }
+
+    if (category.type === 'repeated') {
+      options.push({
+        key: `repeated:${category.id}`,
+        kind: 'repeated',
+        categoryId: category.id,
+        name: `${categoryName}（repeated整体）`
+      })
+
+      getVisibleItems(category).forEach((item, itemIndex) => {
+        options.push({
+          key: `item:${category.id}:${item.id}`,
+          kind: 'item',
+          categoryId: category.id,
+          itemId: item.id,
+          name: `${categoryName} - ${item.name || `小测${itemIndex + 1}`}`
+        })
+      })
+    }
+  })
+
+  return options
+})
+
+const selectedWhatIfTarget = computed(() => {
+  return whatIfTargetOptions.value.find(option => option.key === whatIfTargetKey.value) || null
+})
+
+watch(whatIfTargetOptions, (options) => {
+  if (!options.length) {
+    whatIfTargetKey.value = ''
+    return
+  }
+
+  const exists = options.some(option => option.key === whatIfTargetKey.value)
+  if (!exists) {
+    whatIfTargetKey.value = options[0].key
+  }
+}, { immediate: true })
+
+function applyWhatIfScoreToInputs() {
+  whatIfApplyNotice.value = ''
+  const target = selectedWhatIfTarget.value
+  if (!target) {
+    whatIfApplyNotice.value = '请先选择要模拟的部分。'
+    return
+  }
+
+  const ratio = Math.max(0, Math.min(1, (Number(whatIfScore.value) || 0) / 100))
+  const defaultTotal = 100
+  let updatedCount = 0
+
+  const category = categories.value.find(cat => cat.id === target.categoryId)
+  if (!category) {
+    whatIfApplyNotice.value = '未找到该部分，无法自动填入。'
+    return
+  }
+
+  if (target.kind === 'single' && category.type === 'single') {
+    const total = Number(category.currentTotalPoints) > 0 ? Number(category.currentTotalPoints) : defaultTotal
+    category.currentTotalPoints = total
+    category.earnedPoints = Number((total * ratio).toFixed(2))
+    category.released = true
+    updatedCount += 1
+  }
+
+  if (target.kind === 'repeated' && category.type === 'repeated') {
+    getVisibleItems(category).forEach((item) => {
+      if (!item.released) {
+        const total = Number(item.currentTotalPoints) > 0 ? Number(item.currentTotalPoints) : defaultTotal
+        item.currentTotalPoints = total
+        item.earnedPoints = Number((total * ratio).toFixed(2))
+        item.released = true
+        updatedCount += 1
+      }
+    })
+  }
+
+  if (target.kind === 'item' && category.type === 'repeated') {
+    const item = getVisibleItems(category).find(current => current.id === target.itemId)
+    if (item) {
+      const total = Number(item.currentTotalPoints) > 0 ? Number(item.currentTotalPoints) : defaultTotal
+      item.currentTotalPoints = total
+      item.earnedPoints = Number((total * ratio).toFixed(2))
+      item.released = true
+      updatedCount += 1
+    }
+  }
+
+  if (updatedCount > 0) {
+    whatIfApplyNotice.value = `已自动填入 ${updatedCount} 项（按 ${whatIfScore.value.toFixed(0)}% 计算）。`
+  } else {
+    whatIfApplyNotice.value = '该部分暂无可自动填入项（可能已经出分）。'
+  }
+}
+
+function getWhatIfContribution(category, target, ratio) {
+  if (!target || target.categoryId !== category.id) {
+    return getConfirmedContribution(category)
+  }
+
+  const weight = normalizeNumber(category.weight)
+  if (weight <= 0) return 0
+
+  if (target.kind === 'single' && category.type === 'single') {
+    return weight * ratio
+  }
+
+  if (category.type !== 'repeated') {
+    return getConfirmedContribution(category)
+  }
+
+  const items = getVisibleItems(category)
+  if (!items.length) return 0
+
+  if (target.kind === 'repeated') {
+    return weight * ratio
+  }
+
+  if (target.kind === 'item') {
+    if (category.distribution === 'equal') {
+      let earned = 0
+      let total = 0
+
+      items.forEach((item) => {
+        const totalPoints = normalizeNumber(item.currentTotalPoints)
+        if (totalPoints <= 0) return
+
+        let currentRatio = null
+        if (item.id === target.itemId) {
+          currentRatio = ratio
+        } else if (item.released) {
+          currentRatio = normalizeNumber(item.earnedPoints) / totalPoints
+        }
+
+        if (currentRatio !== null) {
+          earned += currentRatio * totalPoints
+          total += totalPoints
+        }
+      })
+
+      if (total <= 0) return 0
+      return (earned / total) * weight
+    }
+
+    const totalItemWeight = items.reduce((sum, item) => sum + (normalizeNumber(item.weight) || 0), 0)
+    if (totalItemWeight <= 0) return 0
+
+    let contribution = 0
+    items.forEach((item) => {
+      let currentRatio = null
+      if (item.id === target.itemId) {
+        currentRatio = ratio
+      } else if (item.released && normalizeNumber(item.currentTotalPoints) > 0) {
+        currentRatio = normalizeNumber(item.earnedPoints) / normalizeNumber(item.currentTotalPoints)
+      }
+
+      if (currentRatio !== null) {
+        const itemProp = (normalizeNumber(item.weight) || 0) / totalItemWeight
+        contribution += currentRatio * itemProp * weight
+      }
+    })
+
+    return contribution
+  }
+
+  return getConfirmedContribution(category)
+}
+
+const whatIfProjectedGrade = computed(() => {
+  const target = selectedWhatIfTarget.value
+  if (!target) return confirmedGradeWithExtra.value
+
+  const ratio = Math.max(0, Math.min(1, (Number(whatIfScore.value) || 0) / 100))
+  const projectedWithoutExtra = categories.value.reduce((sum, category) => {
+    return sum + getWhatIfContribution(category, target, ratio)
+  }, 0)
+
+  return projectedWithoutExtra + extraCreditContribution.value
+})
+
+const whatIfDelta = computed(() => {
+  return whatIfProjectedGrade.value - confirmedGradeWithExtra.value
+})
+
+const healthCheckIssues = computed(() => {
+  const issues = []
+
+  if (totalWeight.value < 100) {
+    issues.push(`总权重目前为 ${totalWeight.value.toFixed(2)}%，低于 100%。`)
+  } else if (totalWeight.value > 100) {
+    issues.push(`总权重目前为 ${totalWeight.value.toFixed(2)}%，超过 100%。`)
+  }
+
+  categories.value.forEach((category, index) => {
+    const name = displayCategoryName(category, index)
+    const weight = normalizeNumber(category.weight)
+
+    if (weight <= 0) {
+      issues.push(`${name} 的权重未填写或为 0。`)
+    }
+
+    if (category.type === 'single') {
+      if (category.released) {
+        if (!Number.isFinite(Number(category.currentTotalPoints)) || Number(category.currentTotalPoints) <= 0) {
+          issues.push(`${name} 已标记为“有成绩”，但总分未正确填写。`)
+        }
+        if (!Number.isFinite(Number(category.earnedPoints))) {
+          issues.push(`${name} 已标记为“有成绩”，但得分未填写。`)
+        }
+      }
+    } else if (category.type === 'repeated') {
+      const totalItems = Number(category.totalItems) || 0
+      if (totalItems <= 0) {
+        issues.push(`${name} 是多子项类型，但子项数量未设置。`)
+      }
+
+      if (category.distribution === 'custom') {
+        const sumWeight = (category.items || []).slice(0, totalItems).reduce((sum, item) => sum + (Number(item.weight) || 0), 0)
+        if (sumWeight <= 0) {
+          issues.push(`${name} 使用了自定义子项权重，但子项权重总和为 0。`)
+        }
+      }
+
+      ;(category.items || []).slice(0, totalItems).forEach((item, itemIndex) => {
+        if (item.released) {
+          if (!Number.isFinite(Number(item.currentTotalPoints)) || Number(item.currentTotalPoints) <= 0) {
+            issues.push(`${name} 的第 ${itemIndex + 1} 项已出成绩，但总分未正确填写。`)
+          }
+          if (!Number.isFinite(Number(item.earnedPoints))) {
+            issues.push(`${name} 的第 ${itemIndex + 1} 项已出成绩，但得分未填写。`)
+          }
+        }
+      })
+    }
+  })
+
+  return issues
+})
+
+const prioritySuggestions = computed(() => {
+  return categories.value
+    .map((category, index) => ({
+      id: category.id,
+      name: displayCategoryName(category, index),
+      weight: normalizeNumber(category.weight),
+      gainPerOnePercent: normalizeNumber(category.weight) / 100,
+      unreleased: hasUnreleasedWork(category)
+    }))
+    .filter(item => item.unreleased && item.weight > 0)
+    .sort((a, b) => b.gainPerOnePercent - a.gainPerOnePercent)
+})
+
 const remainingWeightBreakdown = computed(() => {
   const list = []
 
@@ -835,6 +1320,110 @@ const neededAverageUnreleased = computed(() => {
   return Math.min(100, (needed / available) * 100)
 })
 
+function gradeLabel(score) {
+  const value = normalizeNumber(score)
+  const scale = gradeScale.value
+  const found = scale.find(item => value >= item.min)
+  return found ? found.label : 'F'
+}
+
+const aMinusThreshold = computed(() => {
+  if (gradeScalePreset.value !== 'custom') return 90
+  const value = normalizeNumber(customAMinusThreshold.value)
+  return Math.max(60, Math.min(99, value || 90))
+})
+
+const gradeScale = computed(() => {
+  if (gradeScalePreset.value === 'china-90') {
+    return [
+      { label: 'A', min: 90 },
+      { label: 'B', min: 80 },
+      { label: 'C', min: 70 },
+      { label: 'D', min: 60 },
+      { label: 'F', min: 0 }
+    ]
+  }
+
+  if (gradeScalePreset.value === 'gpa-4') {
+    return [
+      { label: 'A', min: 90 },
+      { label: 'A-', min: 87 },
+      { label: 'B+', min: 83 },
+      { label: 'B', min: 80 },
+      { label: 'B-', min: 77 },
+      { label: 'C+', min: 73 },
+      { label: 'C', min: 70 },
+      { label: 'C-', min: 67 },
+      { label: 'D', min: 60 },
+      { label: 'F', min: 0 }
+    ]
+  }
+
+  if (gradeScalePreset.value === 'custom') {
+    const aMinus = aMinusThreshold.value
+    const a = Math.min(100, aMinus + 3)
+    return [
+      { label: 'A', min: a },
+      { label: 'A-', min: aMinus },
+      { label: 'B+', min: aMinus - 3 },
+      { label: 'B', min: aMinus - 7 },
+      { label: 'B-', min: aMinus - 10 },
+      { label: 'C+', min: aMinus - 13 },
+      { label: 'C', min: aMinus - 17 },
+      { label: 'C-', min: aMinus - 20 },
+      { label: 'D', min: 60 },
+      { label: 'F', min: 0 }
+    ]
+  }
+
+  return [
+    { label: 'A', min: 93 },
+    { label: 'A-', min: 90 },
+    { label: 'B+', min: 87 },
+    { label: 'B', min: 83 },
+    { label: 'B-', min: 80 },
+    { label: 'C+', min: 77 },
+    { label: 'C', min: 73 },
+    { label: 'C-', min: 70 },
+    { label: 'D', min: 60 },
+    { label: 'F', min: 0 }
+  ]
+})
+
+const gradeScaleText = computed(() => {
+  if (gradeScalePreset.value === 'china-90') {
+    return 'A(90+) / B(80+) / C(70+) / D(60+) / F(<60)'
+  }
+
+  if (gradeScalePreset.value === 'gpa-4') {
+    return 'A(90+) / A-(87+) / B+(83+) / B(80+) / B-(77+) / C+(73+) / C(70+) / C-(67+) / D(60+) / F(<60)'
+  }
+
+  if (gradeScalePreset.value === 'custom') {
+    const aMinus = aMinusThreshold.value
+    const a = Math.min(100, aMinus + 3)
+    return `A(${a.toFixed(1)}+) / A-(${aMinus.toFixed(1)}+) / B+(${(aMinus - 3).toFixed(1)}+) / B(${(aMinus - 7).toFixed(1)}+) / B-(${(aMinus - 10).toFixed(1)}+) / C+(${(aMinus - 13).toFixed(1)}+) / C(${(aMinus - 17).toFixed(1)}+) / C-(${(aMinus - 20).toFixed(1)}+) / D(60+) / F(<60)`
+  }
+
+  return 'A(93+) / A-(90+) / B+(87+) / B(83+) / B-(80+) / C+(77+) / C(73+) / C-(70+) / D(60+) / F(<60)'
+})
+
+const resultExplanation = computed(() => {
+  const current = confirmedGradeWithExtra.value
+  const best = bestPossibleGradeWithExtra.value
+  const gap = Math.max(0, best - current)
+
+  if (targetGradeA.value !== null && best < targetGradeA.value) {
+    return `按当前配置，最好情况是 ${best.toFixed(2)}%，仍低于你的 A 目标 ${targetGradeA.value.toFixed(2)}%。建议降低目标或提高未出部分权重高的项目表现。`
+  }
+
+  if (gap <= 0.01) {
+    return `你当前成绩约 ${current.toFixed(2)}%，可提升空间很小，说明大部分项目已出分或已经接近上限。`
+  }
+
+  return `你当前是 ${current.toFixed(2)}%，理论上最多到 ${best.toFixed(2)}%，还有 ${gap.toFixed(2)}% 的提升空间；重点提升未出成绩中权重更高的部分。`
+})
+
 function normalizeNumber(value) {
   const n = Number(value)
   return Number.isFinite(n) ? n : 0
@@ -844,6 +1433,12 @@ function recordNumberInput(value) {
   const n = Number(value)
   if (Number.isFinite(n) && n !== 0) {
     numberHistory.value.add(String(n))
+
+    const maxHistorySize = 300
+    while (numberHistory.value.size > maxHistorySize) {
+      const first = numberHistory.value.values().next().value
+      numberHistory.value.delete(first)
+    }
   }
 }
 
@@ -1049,6 +1644,46 @@ select:focus {
   padding: 24px;
   position: relative;
   z-index: 1;
+}
+
+.save-status-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.save-status-badge small {
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.save-status-saving {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.save-status-saved {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.save-status-error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
 }
 
 .container > p:first-of-type {
