@@ -100,6 +100,7 @@
 
       <button @click="removeCategory(category.id)" title="Remove this category" style="padding: 8px 12px;">✕</button>
 
+// ... existing code ...
     <div v-if="category.type === 'single'" class="category-details">
           <div style="margin-bottom: 12px;">
             <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">📝 Your Score:</label>
@@ -110,8 +111,11 @@
               v-model.number="category.earnedPoints"
               @input="recordNumberInput(category.earnedPoints)"
               list="numberHistoryList"
+              :disabled="!category.released"
+              :style="{ opacity: category.released ? 1 : 0.5, cursor: category.released ? 'text' : 'not-allowed' }"
             />
             <p style="font-size: 10px; color: #999; margin-top: 2px;">你在这个部分拿到的实际得分</p>
+            <p v-if="!category.released" style="font-size: 10px; color: #f59e0b; margin-top: 4px; padding: 4px; background: #fef3c7; border-radius: 4px;">⚠️ 此部分标记为"无成绩"，不会计入当前已确认成绩</p>
           </div>
 
           <div style="margin-bottom: 12px;">
@@ -123,14 +127,20 @@
               v-model.number="category.currentTotalPoints"
               @input="recordNumberInput(category.currentTotalPoints)"
               list="numberHistoryList"
+              :disabled="!category.released"
+              :style="{ opacity: category.released ? 1 : 0.5, cursor: category.released ? 'text' : 'not-allowed' }"
             />
             <p style="font-size: 10px; color: #999; margin-top: 2px;">这个部分的总分</p>
           </div>
-          <p style="font-size: 12px; color: #666; margin-top: 4px; padding: 8px; background: #f0f9ff; border-radius: 6px;">
+          <p v-if="category.released" style="font-size: 12px; color: #666; margin-top: 4px; padding: 8px; background: #f0f9ff; border-radius: 6px;">
             ✓ Your percentage: ({{ category.earnedPoints || 0 }} / {{ category.currentTotalPoints || 0 }}) × {{ category.weight || 0 }}% = {{ category.currentTotalPoints ? ((category.earnedPoints || 0) / category.currentTotalPoints * (category.weight || 0)).toFixed(2) : 0 }}%
+          </p>
+          <p v-else style="font-size: 12px; color: #999; margin-top: 4px; padding: 8px; background: #f3f4f6; border-radius: 6px;">
+            ⏸️ 此部分未出成绩，暂不计算贡献
           </p>
           <p style="font-size: 10px; background: #fef3c7; padding: 6px; border-radius: 4px; color: #666; margin-top: 6px;">例：拿到85/100，权重25% → 对总成绩贡献 (85/100)×25% = 21.25%</p>
     </div>
+// ... existing code ...
 
     <div v-if="category.type === 'repeated'" class="category-details">
 
@@ -156,12 +166,14 @@
         </div>
 
         <!-- 动态生成 (只显示前 totalItems 个，但保留所有数据) -->
+       // ... existing code ...
         <div v-for="(item, i) in category.items.slice(0, Number(category.totalItems) || 0)" :key="item.id" class="repeated-item">
             <div class="repeated-item-header">
               <span style="font-weight: bold;">Item {{ i + 1 }}</span>
               <input type="text" placeholder="Name (optional)" v-model="item.name" class="item-name-input" />
-              <label>
-                <input type="checkbox" v-model="item.released" /> ✅
+              <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="checkbox" v-model="item.released" /> 
+                <span style="font-size: 11px;">{{ item.released ? '✅ 已出分' : '⏸️ 未出分' }}</span>
               </label>
             </div>
 
@@ -187,8 +199,10 @@
                   v-model.number="item.earnedPoints"
                   @input="recordNumberInput(item.earnedPoints)"
                   list="numberHistoryList"
+                  style="background: #f0f9ff;"
                 />
-                <p style="font-size: 9px; color: #999; margin-top: 2px;">得数</p>
+                <p v-else style="font-size: 9px; color: #999; margin-top: 2px; padding: 8px; background: #f3f4f6; border-radius: 4px; text-align: center;">未出成绩</p>
+                <p v-if="item.released" style="font-size: 9px; color: #999; margin-top: 2px;">得数</p>
               </div>
 
               <div>
@@ -203,13 +217,18 @@
                   @input="recordNumberInput(item.weight)"
                   list="numberHistoryList"
                 />
-                <p style="font-size: 9px; color: #999; margin-top: 2px;">权重</p>
+                <p v-else style="font-size: 9px; color: #999; margin-top: 2px; padding: 8px; background: #f0f9ff; border-radius: 4px; text-align: center;">平均分配</p>
+                <p v-if="category.distribution === 'custom'" style="font-size: 9px; color: #999; margin-top: 2px;">权重</p>
               </div>
             </div>
             <p v-if="item.released && item.currentTotalPoints" style="font-size: 9px; background: #f0f9ff; padding: 4px; border-radius: 3px; color: #666; margin-top: 4px; text-align: center;">
               这个item: {{ ((item.earnedPoints || 0) / item.currentTotalPoints * 100).toFixed(1) }}%
             </p>
+            <p v-else-if="!item.released" style="font-size: 9px; background: #fef3c7; padding: 4px; border-radius: 3px; color: #92400e; margin-top: 4px; text-align: center;">
+              ⚠️ 未计入当前成绩
+            </p>
         </div>
+// ... existing code ...
       </div>
     </div>
 
@@ -394,8 +413,9 @@
       <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">🅰️ Target A grade (%):</label>
       <input type="number" placeholder="e.g., 90" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;" v-model.number="targetGradeA" @input="recordNumberInput(targetGradeA)" list="numberHistoryList" />
       <p style="font-size: 10px; background: #f0f9ff; padding: 6px; border-radius: 4px; color: #666; margin-top: 4px;">例：A通常是90-100，输入你目标成绩的下限</p>
+// ... existing code ...
       <p style="font-size: 13px; color: #444; margin-top: 8px; padding: 8px; background: #f0f9ff; border-radius: 6px;">
-        ✓ 当前已确认成绩：{{ confirmedGrade.toFixed(2) }}% ｜未出成绩最多可补充：+{{ unreleasedPotential.toFixed(2) }}%
+        ✓ 当前已确认成绩（含额外加分）：{{ confirmedGradeWithExtra.toFixed(2) }}% ｜未出成绩最多可补充：+{{ unreleasedPotential.toFixed(2) }}%
       </p>
       <p style="font-size: 13px; color: #444; margin-top: 6px; padding: 8px; background: #fef3c7; border-radius: 6px;">
         📊 要达到 A（{{ targetGradeA.toFixed(2) }}%），未出成绩平均需要：
@@ -403,6 +423,7 @@
         <span v-else-if="neededAverageUnreleased === Infinity" style="font-weight: bold; color: #dc2626;"> 无法达到（需要 &gt;100%）</span>
         <span v-else style="font-weight: bold; color: #0d7d7d;"> {{ neededAverageUnreleased.toFixed(2) }}%</span>
       </p>
+// ... existing code ...
     </div>
 
     <div style="margin-top: 18px; padding: 12px; background: linear-gradient(135deg, rgba(13, 148, 136, 0.08) 0%, rgba(13, 125, 125, 0.08) 100%); border-radius: 8px;">
@@ -620,26 +641,40 @@ function generateCourses() {
   saveConfig();
 }
 
+// ... existing code ...
 function enterCalculator() {
   initCourseNames();
 
-  categories.value = courseNames.value.map((name, i) => ({
-    id: Date.now() + i,
-    name: (name !== null && name !== undefined && String(name).trim() !== '') ? String(name).trim() : '',
-    customName: '',
-    weight: 0,
-    type: 'single',
-    distribution: 'equal',
-    earnedPoints: null,
-    currentTotalPoints: null,
-    released: true,
-    totalItems: null,
-    items: []
-  }));
+  // 如果已经有 categories 且数量匹配，保留现有配置只更新名称
+  if (categories.value.length === courseNames.value.length && categories.value.length > 0) {
+    // 只更新课程名称，保留其他所有配置（权重、成绩等）
+    categories.value = categories.value.map((cat, i) => ({
+      ...cat,
+      name: (courseNames.value[i] !== null && courseNames.value[i] !== undefined && String(courseNames.value[i]).trim() !== '') 
+        ? String(courseNames.value[i]).trim() 
+        : cat.name
+    }));
+  } else {
+    // 如果是首次创建或数量不匹配，创建新的 categories
+    categories.value = courseNames.value.map((name, i) => ({
+      id: Date.now() + i,
+      name: (name !== null && name !== undefined && String(name).trim() !== '') ? String(name).trim() : '',
+      customName: '',
+      weight: 0,
+      type: 'single',
+      distribution: 'equal',
+      earnedPoints: null,
+      currentTotalPoints: null,
+      released: true,
+      totalItems: null,
+      items: []
+    }));
+  }
 
   currentScene.value = 'calculator';
   saveConfig();
 }
+// ... existing code ...
 
 function saveConfig() {
   const config = {
@@ -660,6 +695,8 @@ function saveConfig() {
     targetGradeA: targetGradeA.value,
     gradeScalePreset: gradeScalePreset.value,
     customAMinusThreshold: customAMinusThreshold.value,
+    whatIfScore: whatIfScore.value,
+    whatIfTargetKey: whatIfTargetKey.value,
     numberHistory: Array.from(numberHistory.value),
     savedAt: new Date().toISOString()
   };
@@ -712,6 +749,7 @@ function isStaleSemester(config) {
   return new Date() > cleanupDate;
 }
 
+// ... existing code ...
 function loadConfig() {
   const stored = localStorage.getItem(configStorageKey);
   if (!stored) return;
@@ -746,6 +784,8 @@ function loadConfig() {
       gradeScalePreset.value = config.aMinusStandardMode === 'custom' ? 'custom' : 'us-standard';
     }
     if (typeof config.customAMinusThreshold === 'number') customAMinusThreshold.value = config.customAMinusThreshold;
+    if (typeof config.whatIfScore === 'number') whatIfScore.value = config.whatIfScore;
+    if (typeof config.whatIfTargetKey === 'string') whatIfTargetKey.value = config.whatIfTargetKey;
     if (Array.isArray(config.numberHistory)) numberHistory.value = new Set(config.numberHistory);
   } catch {
     localStorage.removeItem(configStorageKey);
@@ -780,33 +820,19 @@ onMounted(() => {
   window.addEventListener('beforeunload', flushSaveNow);
   window.addEventListener('pagehide', flushSaveNow);
   document.addEventListener('visibilitychange', handlePageHiddenSave);
-
-  // 自动清理过期存储
-  const stored = localStorage.getItem(configStorageKey);
-  if (stored) {
-    try {
-      const config = JSON.parse(stored);
-      if (isStaleSemester(config)) {
-        localStorage.removeItem(configStorageKey);
-        currentScene.value = 'setup';
-      }
-    } catch {
-      localStorage.removeItem(configStorageKey);
-    }
-  }
-
-  onUnmounted(() => {
-    if (saveStatusTimer) {
-      clearTimeout(saveStatusTimer);
-    }
-    window.removeEventListener('beforeunload', flushSaveNow);
-    window.removeEventListener('pagehide', flushSaveNow);
-    document.removeEventListener('visibilitychange', handlePageHiddenSave);
-    observer.disconnect();
-  });
 });
 
-watch([selectedYear, semesterStartDate, semesterEndDate, courseCount, courseNames, categories, hasExtraCredit, extraCreditMode, extraCreditType, extraCreditCategoryId, extraCreditValue, extraCreditValueMax, targetGrade, targetGradeA, gradeScalePreset, customAMinusThreshold], triggerAutoSave, { deep: true });
+onUnmounted(() => {
+  if (saveStatusTimer) {
+    clearTimeout(saveStatusTimer);
+  }
+  window.removeEventListener('beforeunload', flushSaveNow);
+  window.removeEventListener('pagehide', flushSaveNow);
+  document.removeEventListener('visibilitychange', handlePageHiddenSave);
+});
+
+watch([selectedYear, semesterStartDate, semesterEndDate, courseCount, courseNames, categories, hasExtraCredit, extraCreditMode, extraCreditType, extraCreditCategoryId, extraCreditValue, extraCreditValueMax, targetGrade, targetGradeA, gradeScalePreset, customAMinusThreshold, whatIfScore, whatIfTargetKey], triggerAutoSave, { deep: true });
+// ... existing code ...
 
 function syncItems(category) {
   let target = Number(category.totalItems) || 0
@@ -1305,20 +1331,68 @@ const suggestedPlan = computed(() => {
   return `建议未发布项目平均至少达到 ${avgSuggestion.toFixed(1)}%，视具体项目略有浮动。` 
 })
 
+// ... existing code ...
 const unreleasedPotential = computed(() => {
   return Math.max(0, bestPossibleGrade.value - confirmedGrade.value)
 })
 
 const neededAverageUnreleased = computed(() => {
   if (targetGradeA.value === null) return null
-  const needed = targetGradeA.value - confirmedGrade.value
-  const available = unreleasedPotential.value
-
+  
+  // 使用含额外加分的当前成绩
+  const currentWithExtra = confirmedGradeWithExtra.value
+  const needed = targetGradeA.value - currentWithExtra
+  
+  // 如果已经达到目标
   if (needed <= 0) return 0
-  if (available <= 0) return Infinity
-
-  return Math.min(100, (needed / available) * 100)
+  
+  // 计算未出成绩的总权重（不包含extra credit）
+  let unreleasedWeight = 0
+  categories.value.forEach(category => {
+    const weight = normalizeNumber(category.weight)
+    if (weight <= 0) return
+    
+    if (category.type === 'single') {
+      // single类型：如果未出成绩，整个权重都是未释放的
+      if (!category.released) {
+        unreleasedWeight += weight
+      }
+    } else if (category.type === 'repeated') {
+      // repeated类型：计算未出成绩的项目权重
+      if (category.distribution === 'equal') {
+        const totalItems = category.items.length
+        if (totalItems > 0) {
+          const unreleasedCount = category.items.filter(item => !item.released).length
+          unreleasedWeight += (weight / totalItems) * unreleasedCount
+        }
+      } else {
+        // custom distribution
+        const totalItemWeight = category.items.reduce((sum, item) => sum + (normalizeNumber(item.weight) || 0), 0)
+        if (totalItemWeight > 0) {
+          category.items.forEach(item => {
+            if (!item.released) {
+              const itemProp = (normalizeNumber(item.weight) || 0) / totalItemWeight
+              unreleasedWeight += itemProp * weight
+            }
+          })
+        }
+      }
+    }
+  })
+  
+  // 如果没有未出成绩的项目
+  if (unreleasedWeight <= 0) {
+    return needed > 0 ? Infinity : 0
+  }
+  
+  // 计算需要在未出部分达到的平均分
+  // 例如：还需要5分，未出权重是20%，那么需要在未出部分拿到 5/0.2 = 25分（不可能）
+  // 或者：还需要10分，未出权重是20%，那么需要在未出部分拿到 10/0.2 = 50%
+  const requiredAverage = (needed / unreleasedWeight) * 100
+  
+  return Math.min(100, requiredAverage)
 })
+// ... existing code ...
 
 function gradeLabel(score) {
   const value = normalizeNumber(score)
@@ -1429,6 +1503,7 @@ function normalizeNumber(value) {
   return Number.isFinite(n) ? n : 0
 }
 
+// ... existing code ...
 function recordNumberInput(value) {
   const n = Number(value)
   if (Number.isFinite(n) && n !== 0) {
@@ -1439,8 +1514,12 @@ function recordNumberInput(value) {
       const first = numberHistory.value.values().next().value
       numberHistory.value.delete(first)
     }
+    
+    // 手动触发保存，因为 Set 的变化不会被 watch 检测到
+    triggerAutoSave()
   }
 }
+// ... existing code ...
 
 function getConfirmedContribution(category) {
   if (category.type === 'single') {
