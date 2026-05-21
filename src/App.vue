@@ -100,7 +100,7 @@
 
       <button @click="removeCategory(category.id)" title="Remove this category" style="padding: 8px 12px;">✕</button>
 
-// ... existing code ...
+
     <div v-if="category.type === 'single'" class="category-details">
           <div style="margin-bottom: 12px;">
             <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">📝 Your Score:</label>
@@ -140,7 +140,6 @@
           </p>
           <p style="font-size: 10px; background: #fef3c7; padding: 6px; border-radius: 4px; color: #666; margin-top: 6px;">例：拿到85/100，权重25% → 对总成绩贡献 (85/100)×25% = 21.25%</p>
     </div>
-// ... existing code ...
 
     <div v-if="category.type === 'repeated'" class="category-details">
 
@@ -166,7 +165,6 @@
         </div>
 
         <!-- 动态生成 (只显示前 totalItems 个，但保留所有数据) -->
-       // ... existing code ...
         <div v-for="(item, i) in category.items.slice(0, Number(category.totalItems) || 0)" :key="item.id" class="repeated-item">
             <div class="repeated-item-header">
               <span style="font-weight: bold;">Item {{ i + 1 }}</span>
@@ -228,7 +226,6 @@
               ⚠️ 未计入当前成绩
             </p>
         </div>
-// ... existing code ...
       </div>
     </div>
 
@@ -413,7 +410,6 @@
       <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">🅰️ Target A grade (%):</label>
       <input type="number" placeholder="e.g., 90" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;" v-model.number="targetGradeA" @input="recordNumberInput(targetGradeA)" list="numberHistoryList" />
       <p style="font-size: 10px; background: #f0f9ff; padding: 6px; border-radius: 4px; color: #666; margin-top: 4px;">例：A通常是90-100，输入你目标成绩的下限</p>
-// ... existing code ...
       <p style="font-size: 13px; color: #444; margin-top: 8px; padding: 8px; background: #f0f9ff; border-radius: 6px;">
         ✓ 当前已确认成绩（含额外加分）：{{ confirmedGradeWithExtra.toFixed(2) }}% ｜未出成绩最多可补充：+{{ unreleasedPotential.toFixed(2) }}%
       </p>
@@ -423,7 +419,6 @@
         <span v-else-if="neededAverageUnreleased === Infinity" style="font-weight: bold; color: #dc2626;"> 无法达到（需要 &gt;100%）</span>
         <span v-else style="font-weight: bold; color: #0d7d7d;"> {{ neededAverageUnreleased.toFixed(2) }}%</span>
       </p>
-// ... existing code ...
     </div>
 
     <div style="margin-top: 18px; padding: 12px; background: linear-gradient(135deg, rgba(13, 148, 136, 0.08) 0%, rgba(13, 125, 125, 0.08) 100%); border-radius: 8px;">
@@ -641,7 +636,7 @@ function generateCourses() {
   saveConfig();
 }
 
-// ... existing code ...
+
 function enterCalculator() {
   initCourseNames();
 
@@ -674,7 +669,7 @@ function enterCalculator() {
   currentScene.value = 'calculator';
   saveConfig();
 }
-// ... existing code ...
+
 
 function saveConfig() {
   const config = {
@@ -749,7 +744,7 @@ function isStaleSemester(config) {
   return new Date() > cleanupDate;
 }
 
-// ... existing code ...
+
 function loadConfig() {
   const stored = localStorage.getItem(configStorageKey);
   if (!stored) return;
@@ -832,7 +827,7 @@ onUnmounted(() => {
 });
 
 watch([selectedYear, semesterStartDate, semesterEndDate, courseCount, courseNames, categories, hasExtraCredit, extraCreditMode, extraCreditType, extraCreditCategoryId, extraCreditValue, extraCreditValueMax, targetGrade, targetGradeA, gradeScalePreset, customAMinusThreshold, whatIfScore, whatIfTargetKey], triggerAutoSave, { deep: true });
-// ... existing code ...
+
 
 function syncItems(category) {
   let target = Number(category.totalItems) || 0
@@ -1331,7 +1326,7 @@ const suggestedPlan = computed(() => {
   return `建议未发布项目平均至少达到 ${avgSuggestion.toFixed(1)}%，视具体项目略有浮动。` 
 })
 
-// ... existing code ...
+
 const unreleasedPotential = computed(() => {
   return Math.max(0, bestPossibleGrade.value - confirmedGrade.value)
 })
@@ -1392,7 +1387,7 @@ const neededAverageUnreleased = computed(() => {
   
   return Math.min(100, requiredAverage)
 })
-// ... existing code ...
+
 
 function gradeLabel(score) {
   const value = normalizeNumber(score)
@@ -1503,7 +1498,7 @@ function normalizeNumber(value) {
   return Number.isFinite(n) ? n : 0
 }
 
-// ... existing code ...
+
 function recordNumberInput(value) {
   const n = Number(value)
   if (Number.isFinite(n) && n !== 0) {
@@ -1519,7 +1514,7 @@ function recordNumberInput(value) {
     triggerAutoSave()
   }
 }
-// ... existing code ...
+
 
 function getConfirmedContribution(category) {
   if (category.type === 'single') {
